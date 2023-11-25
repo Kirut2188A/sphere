@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      background-color: #000;
+      color: #fff;
+      font-family: 'Courier New', monospace;
+      line-height: 1.5;
+    }
+
+    canvas {
+      display: block;
+    }
+  </style>
+  <script type="module">
+    import * as THREE from 'https://threejsfundamentals.org/threejs/resources/threejs/r122/build/three.module.js';
+
+    let camera, scene, renderer, mainSphere, dots, mode = 'normal';
+
+    init();
+    animate();
+
+    function init() {
+      // Set up camera
+      camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+      camera.position.z = 10;
+
+      // Create a scene
+      scene = new THREE.Scene();
+
+      // Create a larger main sphere with grey color
+      const mainSphereGeometry = new THREE.SphereGeometry(2, 32, 32);
+      const mainSphereMaterial = new THREE.MeshBasicMaterial({ color: 0x808080, transparent: true, opacity: 0.1 });
+      mainSphere = new THREE.Mesh(mainSphereGeometry, mainSphereMaterial);
+      scene.add(mainSphere);
+
+      // Create smaller dots on the surface of the main sphere
+      dots = new THREE.Group();
+      const dotGeometry = new THREE.SphereGeometry(0.03, 16, 16);
+
+      for (let i = 0; i < 300; i++) {
+        const dot = new THREE.Mesh(dotGeometry, new THREE.MeshBasicMaterial({ color: 0xffffff }));
+        const phi = Math.random() * Math.PI * 2;
+        const theta = Math.acos(Math.random() * 2 - 1);
+
+        dot.position.x = Math.sin(theta) * Math.cos(phi);
+        dot.position.y = Math.sin(theta) * Math.sin(phi);
+        dot.position.z = Math.cos(theta);
+
+        dot.position.multiplyScalar(2.1); // Move the dots slightly outside the main sphere
+
+        dot.originalPosition = dot.position.clone(); // Save the original position of each dot
+
+        dot.hue = Math.random(); // Initial hue for rainbow mode
+
+        dots.add(dot);
+      }
+
+      mainSphere.add(dots);
+
+      // Connect the dots with thin black lines
+      const lineMaterial = new THREE.LineBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.1 });
+      dots.children.forEach(dot => {
+        const lineGeometry = new THREE.BufferGeometry().setFromPoints([dot.position, mainSphere.position]);
+        const line = new THREE.Line(lineGeometry, lineMaterial);
+        scene.add(line);
+      });
+
+      // Set up the renderer
+      renderer = new THREE.WebGLRenderer();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      document.body.appendChild(renderer.domElement);
+
+      // Handle window resize
+      window.addEventListener('resize', onWindowResize);
+
+      // Handle key press
+      window.addEventListener('keydown', onKeyDown);
+
+      // Handle scroll to adjust main sphere size
+      window.addEventListener('wheel', onWheel);
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
+
+      // Rotate the main sphere like the Earth
+      mainSphere.rotation.y += 0.002; // Horizontal rotation
+      mainSphere.rotation.x += 0.001; // Vertical rotation
+
+      // Update dots based on mode
+      dots.children.forEach(dot => {
+        if (mode === 'sparkly') {
+          // Randomly change between black and white
+          dot.material.color.setHex(Math.random() > 0.5 ? 0xffffff : 0x000000);
+        } else if (mode === 'rainbow') {
+          // Gradually change hue for rainbow mode
+          dot.hue = (dot.hue + 0.005) % 1;
+          const rainbowColor = new THREE.Color().setHSL(dot.hue, 1.0, 0.5);
+          dot.material.color.copy(rainbowColor);
+        } else {
+          // Reset material for normal mode
+          dot.material.color.setHex(0xffffff);
+        }
+      });
+
+      // Render the scene
+      renderer.render(scene, camera);
+    }
+
+    function onWindowResize() {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+
+    function onKeyDown(event) {
+      if (event.key === 's' || event.key === 'S') {
+        toggleMode();
+      }
+    }
+
+    function toggleMode() {
+      if (mode === 'normal') {
+        mode = 'sparkly';
+      } else if (mode === 'sparkly') {
+        mode = 'rainbow';
+      } else {
+        mode = 'normal';
+      }
+    }
+
+    function onWheel(event) {
+      // Adjust main sphere size based on scroll direction
+      mainSphere.scale.x += event.deltaY * 0.001;
+      mainSphere.scale.y += event.deltaY * 0.001;
+      mainSphere.scale.z += event.deltaY * 0.001;
+    }
+  </script>
+</head>
+<body>
+</body>
+</html>
